@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 's.zip'
+  workflow_dispatch:
 
 jobs:
   unzip:
