@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlexPOS — Orders</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="css/main.css" /><link rel="stylesheet" href="css/sidebar.css" />
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="main-wrapper" id="main-wrapper">
+    <div id="topbar-mount"></div>
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Orders <span>&amp; Transactions</span></h1>
+          <div class="page-subtitle">Complete transaction history with refund management</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-glass" id="export-orders-btn"><i class="bi bi-download me-2"></i>Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="glass-card p-3 mb-4">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-3">
+            <label class="form-label">Date From</label>
+            <input type="date" class="form-control" id="filter-date-from" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Date To</label>
+            <input type="date" class="form-control" id="filter-date-to" />
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Payment</label>
+            <select class="form-select" id="filter-payment">
+              <option value="">All</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="digital">Digital</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="filter-status">
+              <option value="">All</option>
+              <option value="completed">Completed</option>
+              <option value="refunded">Refunded</option>
+              <option value="partial_refund">Partial Refund</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-2">
+            <button class="btn btn-primary w-100" id="apply-filters-btn"><i class="bi bi-funnel me-2"></i>Filter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Strip -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon success"><i class="bi bi-currency-dollar"></i></div><div class="stat-value" id="ord-total-revenue">—</div><div class="stat-label">Total Revenue</div></div></div>
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon"><i class="bi bi-receipt"></i></div><div class="stat-value" id="ord-total-orders">—</div><div class="stat-label">Transactions</div></div></div>
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon warning"><i class="bi bi-arrow-counterclockwise"></i></div><div class="stat-value" id="ord-refunds">—</div><div class="stat-label">Refunds</div></div></div>
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon info"><i class="bi bi-basket"></i></div><div class="stat-value" id="ord-avg">—</div><div class="stat-label">Avg. Order Value</div></div></div>
+      </div>
+
+      <!-- Table -->
+      <div class="glass-card">
+        <div class="fp-table-wrapper">
+          <table class="fp-table">
+            <thead>
+              <tr>
+                <th>Txn ID</th>
+                <th>Date / Time</th>
+                <th>Customer</th>
+                <th>Cashier</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="orders-tbody">
+              <tr><td colspan="9" class="text-center py-5"><div class="fp-spinner mx-auto"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fp-pagination" id="orders-pagination"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Order Detail Drawer -->
+  <div class="fp-drawer-overlay" id="drawer-overlay"></div>
+  <div class="fp-drawer" id="order-drawer">
+    <div class="fp-drawer-header">
+      <div class="fp-drawer-title">Order Detail</div>
+      <button class="btn btn-glass btn-icon" id="close-drawer-btn"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="fp-drawer-body" id="order-detail-body">
+      <div class="text-center py-5"><div class="fp-spinner mx-auto"></div></div>
+    </div>
+    <div class="fp-drawer-footer" id="order-detail-footer"></div>
+  </div>
+
+  <!-- Refund Modal -->
+  <div class="modal fade" id="refundModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title"><i class="bi bi-arrow-counterclockwise me-2"></i>Process Refund</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Refund Type</label>
+            <select class="form-select" id="refund-type">
+              <option value="refunded">Full Refund</option>
+              <option value="partial_refund">Partial Refund</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Reason <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="refund-reason" rows="3" placeholder="Describe the reason for this refund…"></textarea>
+          </div>
+          <div class="glass-card p-3" style="font-size:.83rem;color:var(--text-muted)">
+            <i class="bi bi-info-circle me-2"></i>Stock will be automatically restored for refunded items.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-glass" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-danger" id="confirm-refund-btn"><i class="bi bi-arrow-counterclockwise me-2"></i>Process Refund</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script type="module">
+    import { guard }              from './js/router.js';
+    import { buildSidebar, buildTopbar, filterNavByRole } from './js/layout.js';
+    import { initSidebar, startClock } from './js/sidebar.js';
+    import { initTheme }          from './js/theme.js';
+    import { populateSidebarUser } from './js/auth.js';
+    import { Toast, confirm, formatCurrency, formatDateTime, Paginator, toDateInputValue } from './js/utils.js';
+    import { ExportService }      from './js/exportService.js';
+    import { db }                 from './js/firebase-config.js';
+    import {
+      collection, query, where, orderBy, onSnapshot,
+      doc, updateDoc, addDoc, serverTimestamp,
+      Timestamp, increment, writeBatch, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initTheme();
+    document.getElementById('sidebar-mount').innerHTML = buildSidebar('orders');
+    document.getElementById('topbar-mount').innerHTML  = buildTopbar('Orders', 'Transaction history');
+    initSidebar(); startClock();
+    const userDoc = await guard(); if (!userDoc) throw new Error('Unauthorized');
+    populateSidebarUser(userDoc); filterNavByRole(userDoc.role);
+
+    // Set default dates (last 30 days)
+    const now = new Date();
+    const monthAgo = new Date(now); monthAgo.setDate(now.getDate() - 30);
+    document.getElementById('filter-date-from').value = toDateInputValue({ seconds: monthAgo.getTime() / 1000 });
+    document.getElementById('filter-date-to').value   = toDateInputValue({ seconds: now.getTime() / 1000 });
+
+    let allTxns     = [];
+    let currentTxn  = null;
+    let unsubscribe = null;
+    const paginator = new Paginator({ perPage: 25, onRender: renderTable });
+    const refundModal = new bootstrap.Modal(document.getElementById('refundModal'));
+
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const drawer        = document.getElementById('order-drawer');
+
+    function loadTransactions() {
+      if (unsubscribe) unsubscribe();
+      const fromDate = new Date(document.getElementById('filter-date-from').value + 'T00:00:00');
+      const toDate   = new Date(document.getElementById('filter-date-to').value   + 'T23:59:59');
+      const payment  = document.getElementById('filter-payment').value;
+      const status   = document.getElementById('filter-status').value;
+
+      // Build query — avoid composite index by client-side filtering extra conditions
+      const q = query(
+        collection(db, 'transactions'),
+        where('createdAt', '>=', Timestamp.fromDate(fromDate)),
+        where('createdAt', '<=', Timestamp.fromDate(toDate))
+      );
+
+      document.getElementById('orders-tbody').innerHTML = `<tr><td colspan="9" class="text-center py-5"><div class="fp-spinner mx-auto"></div></td></tr>`;
+
+      unsubscribe = onSnapshot(q, snap => {
+        let txns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Client-side filter
+        if (payment) txns = txns.filter(t => t.paymentMethod === payment);
+        if (status)  txns = txns.filter(t => t.status === status);
+        // Sort newest first
+        txns.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        allTxns = txns;
+        updateSummary(txns);
+        paginator.setData(txns);
+        paginator.render();
+        paginator.renderControls('orders-pagination');
+      }, err => Toast.error('Failed to load transactions'));
+    }
+
+    function updateSummary(txns) {
+      const revenue = txns.filter(t => t.status !== 'refunded').reduce((s, t) => s + (t.total || 0), 0);
+      const refunds = txns.filter(t => t.status === 'refunded' || t.status === 'partial_refund').length;
+      document.getElementById('ord-total-revenue').textContent = formatCurrency(revenue);
+      document.getElementById('ord-total-orders').textContent  = txns.length;
+      document.getElementById('ord-refunds').textContent       = refunds;
+      document.getElementById('ord-avg').textContent           = txns.length ? formatCurrency(revenue / txns.length) : '—';
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('orders-tbody');
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="9"><div class="fp-empty"><i class="bi bi-receipt fp-empty-icon"></i><div class="fp-empty-title">No transactions found</div><div class="fp-empty-text">Try adjusting the date range or filters</div></div></td></tr>`;
+        return;
+      }
+      const payIcons = { cash:'bi-cash', card:'bi-credit-card', digital:'bi-phone' };
+      const statusBadge = {
+        completed:      'fp-badge-success',
+        refunded:       'fp-badge-danger',
+        partial_refund: 'fp-badge-warning'
+      };
+      tbody.innerHTML = data.map(t => {
+        const dt = t.createdAt ? new Date(t.createdAt.seconds*1000) : new Date();
+        return `<tr>
+          <td style="font-family:monospace;font-size:.75rem">#${t.id.slice(-8).toUpperCase()}</td>
+          <td>${dt.toLocaleDateString([], {month:'short',day:'numeric'})} <span style="color:var(--text-muted)">${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></td>
+          <td>${t.customerName || '<span class="text-muted-fp">Walk-in</span>'}</td>
+          <td>${t.cashierName || '—'}</td>
+          <td>${t.items?.length || 0} items</td>
+          <td class="td-main">${formatCurrency(t.total)}</td>
+          <td><span class="fp-badge fp-badge-muted"><i class="bi ${payIcons[t.paymentMethod]||'bi-cash'} me-1"></i>${t.paymentMethod}</span></td>
+          <td><span class="fp-badge ${statusBadge[t.status]||'fp-badge-muted'}">${t.status?.replace('_',' ')}</span></td>
+          <td>
+            <div class="d-flex gap-1">
+              <button class="btn btn-glass btn-icon detail-btn" data-id="${t.id}" title="View detail"><i class="bi bi-eye"></i></button>
+              ${t.status === 'completed' && (userDoc.role === 'admin' || userDoc.role === 'manager')
+                ? `<button class="btn btn-danger-glass btn-icon refund-btn" data-id="${t.id}" title="Refund"><i class="bi bi-arrow-counterclockwise"></i></button>`
+                : ''}
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+
+      tbody.querySelectorAll('.detail-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentTxn = allTxns.find(t => t.id === btn.dataset.id);
+          openDetail();
+        });
+      });
+      tbody.querySelectorAll('.refund-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentTxn = allTxns.find(t => t.id === btn.dataset.id);
+          refundModal.show();
+        });
+      });
+    }
+
+    function openDetail() {
+      const t = currentTxn;
+      if (!t) return;
+      const dt = t.createdAt ? new Date(t.createdAt.seconds*1000).toLocaleString() : '—';
+      document.getElementById('order-detail-body').innerHTML = `
+        <div class="glass-card p-3 mb-3">
+          <div class="row g-2" style="font-size:.83rem">
+            <div class="col-6"><div style="color:var(--text-muted)">Transaction ID</div><div style="font-weight:600;font-family:monospace">#${t.id.slice(-8).toUpperCase()}</div></div>
+            <div class="col-6"><div style="color:var(--text-muted)">Date</div><div style="font-weight:600">${dt}</div></div>
+            <div class="col-6"><div style="color:var(--text-muted)">Cashier</div><div style="font-weight:600">${t.cashierName||'—'}</div></div>
+            <div class="col-6"><div style="color:var(--text-muted)">Customer</div><div style="font-weight:600">${t.customerName||'Walk-in'}</div></div>
+            <div class="col-6"><div style="color:var(--text-muted)">Payment</div><div style="font-weight:600">${t.paymentMethod}</div></div>
+            <div class="col-6"><div style="color:var(--text-muted)">Status</div><div style="font-weight:600">${t.status?.replace('_',' ')}</div></div>
+          </div>
+        </div>
+        <div class="section-title">Items</div>
+        ${(t.items||[]).map(item => `
+          <div class="d-flex justify-content-between align-items-center py-2 border-bottom" style="border-color:var(--border-color)!important;font-size:.85rem">
+            <div>
+              <div style="font-weight:600">${item.name}</div>
+              <div style="color:var(--text-muted)">${item.qty}x @ ${formatCurrency(item.price)}</div>
+            </div>
+            <div style="font-weight:700">${formatCurrency(item.price * item.qty)}</div>
+          </div>`).join('')}
+        <div class="mt-3 glass-card p-3" style="font-size:.85rem">
+          <div class="d-flex justify-content-between mb-2"><span style="color:var(--text-muted)">Subtotal</span><span>${formatCurrency(t.subtotal)}</span></div>
+          ${t.discount > 0 ? `<div class="d-flex justify-content-between mb-2"><span style="color:var(--text-muted)">Discount</span><span class="text-success">-${formatCurrency(t.discount)}</span></div>` : ''}
+          ${t.tax > 0 ? `<div class="d-flex justify-content-between mb-2"><span style="color:var(--text-muted)">Tax</span><span>${formatCurrency(t.tax)}</span></div>` : ''}
+          <div class="d-flex justify-content-between border-top pt-2 mt-1" style="border-color:var(--border-color)!important">
+            <span style="font-weight:700">Total</span>
+            <span style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:var(--accent)">${formatCurrency(t.total)}</span>
+          </div>
+          ${t.cashReceived > 0 ? `<div class="d-flex justify-content-between mt-2"><span style="color:var(--text-muted)">Cash Received</span><span>${formatCurrency(t.cashReceived)}</span></div>` : ''}
+          ${t.change > 0 ? `<div class="d-flex justify-content-between"><span style="color:var(--text-muted)">Change</span><span>${formatCurrency(t.change)}</span></div>` : ''}
+          ${t.refundReason ? `<div class="mt-2 p-2 rounded" style="background:rgba(239,68,68,.1);font-size:.78rem;color:var(--danger)"><i class="bi bi-info-circle me-1"></i>Refund: ${t.refundReason}</div>` : ''}
+        </div>`;
+      document.getElementById('order-detail-footer').innerHTML = '';
+      drawerOverlay.classList.add('open');
+      drawer.classList.add('open');
+    }
+
+    document.getElementById('close-drawer-btn').addEventListener('click', () => {
+      drawerOverlay.classList.remove('open'); drawer.classList.remove('open');
+    });
+    drawerOverlay.addEventListener('click', () => {
+      drawerOverlay.classList.remove('open'); drawer.classList.remove('open');
+    });
+
+    // ── Refund ──
+    document.getElementById('confirm-refund-btn').addEventListener('click', async () => {
+      const t      = currentTxn;
+      const reason = document.getElementById('refund-reason').value.trim();
+      const type   = document.getElementById('refund-type').value;
+      if (!reason)  { Toast.error('Refund reason is required'); return; }
+
+      const btn = document.getElementById('confirm-refund-btn');
+      btn.disabled = true;
+      try {
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'transactions', t.id), {
+          status:       type,
+          refundReason: reason,
+          refundedBy:   userDoc.name,
+          refundedAt:   serverTimestamp()
+        });
+        // Restore stock
+        if (type === 'refunded') {
+          (t.items || []).forEach(item => {
+            batch.update(doc(db, 'products', item.productId), {
+              stock: increment(item.qty)
+            });
+          });
+        }
+        await batch.commit();
+        Toast.success('Refund processed');
+        refundModal.hide();
+      } catch (err) {
+        Toast.error('Refund failed: ' + err.message);
+      } finally { btn.disabled = false; }
+    });
+
+    // ── Filter events ──
+    document.getElementById('apply-filters-btn').addEventListener('click', loadTransactions);
+
+    document.getElementById('export-orders-btn').addEventListener('click', () => {
+      ExportService.toCSV(ExportService.formatTransactions(allTxns), 'orders_export.csv');
+    });
+
+    // Initial load
+    loadTransactions();
+  </script>
+</body>
+</html>

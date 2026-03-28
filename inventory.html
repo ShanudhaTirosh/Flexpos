@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlexPOS — Inventory</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="css/main.css" /><link rel="stylesheet" href="css/sidebar.css" />
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="main-wrapper" id="main-wrapper">
+    <div id="topbar-mount"></div>
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Inventory <span>Management</span></h1>
+          <div class="page-subtitle">Real-time stock levels and adjustment history</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-glass" id="export-stock-btn"><i class="bi bi-download me-2"></i>Export</button>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="glass-card stat-card">
+            <div class="stat-icon"><i class="bi bi-boxes"></i></div>
+            <div class="stat-value" id="inv-total-products">—</div>
+            <div class="stat-label">Total Products</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="glass-card stat-card">
+            <div class="stat-icon success"><i class="bi bi-check-circle"></i></div>
+            <div class="stat-value" id="inv-in-stock">—</div>
+            <div class="stat-label">In Stock</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="glass-card stat-card">
+            <div class="stat-icon warning"><i class="bi bi-exclamation-triangle"></i></div>
+            <div class="stat-value" id="inv-low-stock">—</div>
+            <div class="stat-label">Low Stock</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="glass-card stat-card">
+            <div class="stat-icon danger"><i class="bi bi-x-circle"></i></div>
+            <div class="stat-value" id="inv-out-stock">—</div>
+            <div class="stat-label">Out of Stock</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters + Table -->
+      <div class="glass-card mb-4">
+        <div class="p-3 border-bottom" style="border-color:var(--border-color)!important">
+          <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-5">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="inv-search" placeholder="Search products…" />
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <select class="form-select" id="inv-filter-cat"><option value="">All Categories</option></select>
+            </div>
+            <div class="col-6 col-md-3">
+              <select class="form-select" id="inv-filter-stock">
+                <option value="">All</option>
+                <option value="ok">In Stock</option>
+                <option value="low">Low Stock</option>
+                <option value="out">Out of Stock</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="fp-table-wrapper">
+          <table class="fp-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Current Stock</th>
+                <th>Low Stock Alert</th>
+                <th>Supplier</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inv-tbody">
+              <tr><td colspan="7" class="text-center py-5"><div class="fp-spinner mx-auto"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fp-pagination" id="inv-pagination"></div>
+      </div>
+
+      <!-- Stock History -->
+      <div class="glass-card">
+        <div class="p-4 pb-2">
+          <div class="section-title">Recent Stock Adjustments</div>
+        </div>
+        <div class="fp-table-wrapper m-3 mt-0">
+          <table class="fp-table">
+            <thead>
+              <tr><th>Product</th><th>Change</th><th>Reason</th><th>By</th><th>Date</th></tr>
+            </thead>
+            <tbody id="log-tbody">
+              <tr><td colspan="5" class="text-center py-4"><div class="fp-spinner mx-auto"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Stock Adjust Modal -->
+  <div class="modal fade" id="adjustModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-clipboard2-plus me-2"></i>Adjust Stock</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="glass-card p-3 mb-4 d-flex align-items-center gap-3">
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--accent)"><i class="bi bi-box-seam"></i></div>
+            <div>
+              <div id="adjust-product-name" style="font-weight:700"></div>
+              <div id="adjust-current-stock" style="font-size:.8rem;color:var(--text-muted)"></div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Adjustment Type</label>
+            <div class="d-flex gap-2">
+              <button class="btn btn-success-glass flex-1 adj-type-btn active" data-type="add"><i class="bi bi-plus-circle me-2"></i>Add Stock</button>
+              <button class="btn btn-danger-glass flex-1 adj-type-btn" data-type="remove"><i class="bi bi-dash-circle me-2"></i>Remove Stock</button>
+              <button class="btn btn-glass flex-1 adj-type-btn" data-type="set"><i class="bi bi-pencil me-2"></i>Set Exact</button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Quantity</label>
+            <input type="number" class="form-control" id="adjust-qty" min="0" placeholder="0" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Reason <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="adjust-reason" placeholder="e.g. Received supplier order, Damaged items…" list="reason-list" />
+            <datalist id="reason-list">
+              <option value="Received supplier order">
+              <option value="Stock count correction">
+              <option value="Damaged / expired items">
+              <option value="Internal use">
+              <option value="Return from customer">
+            </datalist>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-glass" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="confirm-adjust-btn"><i class="bi bi-check-lg me-2"></i>Apply Adjustment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script type="module">
+    import { guard }              from './js/router.js';
+    import { buildSidebar, buildTopbar, filterNavByRole } from './js/layout.js';
+    import { initSidebar, startClock } from './js/sidebar.js';
+    import { initTheme }          from './js/theme.js';
+    import { populateSidebarUser } from './js/auth.js';
+    import { Toast, confirm, formatDateTime, Paginator, debounce } from './js/utils.js';
+    import { ExportService }      from './js/exportService.js';
+    import { db }                 from './js/firebase-config.js';
+    import {
+      collection, onSnapshot, doc, updateDoc, addDoc,
+      serverTimestamp, query, orderBy, limit, getDocs, increment
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initTheme();
+    document.getElementById('sidebar-mount').innerHTML = buildSidebar('inventory');
+    document.getElementById('topbar-mount').innerHTML  = buildTopbar('Inventory', 'Stock management');
+    initSidebar(); startClock();
+
+    const userDoc = await guard();
+    if (!userDoc) throw new Error('Unauthorized');
+    populateSidebarUser(userDoc);
+    filterNavByRole(userDoc.role);
+
+    let allProducts = [];
+    let adjustingProduct = null;
+    let adjustType = 'add';
+
+    const paginator = new Paginator({ perPage: 25, onRender: renderTable });
+
+    // ── Load products (live) ──
+    onSnapshot(collection(db, 'products'), snap => {
+      allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateStats();
+      refreshCatFilter();
+      applyFilters();
+    });
+
+    // ── Load stock logs ──
+    onSnapshot(
+      query(collection(db, 'stockLogs'), orderBy('at', 'desc'), limit(20)),
+      snap => {
+        const logs = snap.docs.map(d => d.data());
+        const logTbody = document.getElementById('log-tbody');
+        if (!logs.length) {
+          logTbody.innerHTML = `<tr><td colspan="5"><div class="fp-empty" style="padding:24px"><div class="fp-empty-title">No adjustments yet</div></div></td></tr>`;
+          return;
+        }
+        logTbody.innerHTML = logs.map(l => {
+          const sign  = l.change > 0 ? '+' : '';
+          const cls   = l.change > 0 ? 'fp-badge-success' : l.change < 0 ? 'fp-badge-danger' : 'fp-badge-muted';
+          const dt    = l.at ? new Date(l.at.seconds * 1000).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+          return `<tr>
+            <td class="td-main">${l.productName || '—'}</td>
+            <td><span class="fp-badge ${cls}">${sign}${l.change}</span></td>
+            <td>${l.reason || '—'}</td>
+            <td>${l.by || '—'}</td>
+            <td>${dt}</td>
+          </tr>`;
+        }).join('');
+      }
+    );
+
+    function updateStats() {
+      const low = allProducts.filter(p => p.stock > 0 && p.stock <= (p.lowStockThreshold || 10)).length;
+      const out = allProducts.filter(p => p.stock === 0).length;
+      document.getElementById('inv-total-products').textContent = allProducts.length;
+      document.getElementById('inv-in-stock').textContent       = allProducts.filter(p => p.stock > 0).length;
+      document.getElementById('inv-low-stock').textContent      = low;
+      document.getElementById('inv-out-stock').textContent      = out;
+    }
+
+    function refreshCatFilter() {
+      const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+      const cur  = document.getElementById('inv-filter-cat').value;
+      document.getElementById('inv-filter-cat').innerHTML =
+        `<option value="">All Categories</option>` +
+        cats.map(c => `<option ${c===cur?'selected':''} value="${c}">${c}</option>`).join('');
+    }
+
+    function applyFilters() {
+      const q   = document.getElementById('inv-search').value.toLowerCase();
+      const cat = document.getElementById('inv-filter-cat').value;
+      const stk = document.getElementById('inv-filter-stock').value;
+      let filtered = allProducts.filter(p => {
+        const mQ = !q || p.name?.toLowerCase().includes(q) || p.supplier?.toLowerCase().includes(q);
+        const mC = !cat || p.category === cat;
+        const mS = !stk
+          || (stk === 'ok'  && p.stock > (p.lowStockThreshold || 10))
+          || (stk === 'low' && p.stock > 0 && p.stock <= (p.lowStockThreshold || 10))
+          || (stk === 'out' && p.stock === 0);
+        return mQ && mC && mS;
+      });
+      filtered.sort((a, b) => a.name?.localeCompare(b.name));
+      paginator.setData(filtered);
+      paginator.render();
+      paginator.renderControls('inv-pagination');
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('inv-tbody');
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="fp-empty"><i class="bi bi-boxes fp-empty-icon"></i><div class="fp-empty-title">No products match filter</div></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map(p => {
+        const threshold = p.lowStockThreshold || 10;
+        const pct   = p.stock === 0 ? 0 : Math.min(100, (p.stock / Math.max(p.stock, threshold * 3)) * 100);
+        const barCls= p.stock === 0 ? 'var(--danger)' : p.stock <= threshold ? 'var(--warning)' : 'var(--success)';
+        const badge = p.stock === 0
+          ? '<span class="fp-badge fp-badge-danger"><i class="bi bi-x-circle me-1"></i>Out of Stock</span>'
+          : p.stock <= threshold
+            ? '<span class="fp-badge fp-badge-warning"><i class="bi bi-exclamation-triangle me-1"></i>Low Stock</span>'
+            : '<span class="fp-badge fp-badge-success"><i class="bi bi-check-circle me-1"></i>In Stock</span>';
+        return `<tr>
+          <td class="td-main">${p.name}</td>
+          <td><span class="fp-badge fp-badge-muted">${p.category || '—'}</span></td>
+          <td>
+            <div class="d-flex align-items-center gap-3">
+              <span style="font-family:var(--font-display);font-weight:700;font-size:1.1rem;min-width:36px">${p.stock}</span>
+              <div style="flex:1;height:6px;background:var(--glass-bg);border-radius:3px;min-width:80px">
+                <div style="height:100%;width:${pct}%;background:${barCls};border-radius:3px;transition:width .5s"></div>
+              </div>
+            </div>
+          </td>
+          <td>${threshold}</td>
+          <td>${p.supplier || '—'}</td>
+          <td>${badge}</td>
+          <td>
+            <button class="btn btn-glass btn-sm adjust-btn" data-id="${p.id}">
+              <i class="bi bi-clipboard2-plus me-1"></i>Adjust
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      tbody.querySelectorAll('.adjust-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          adjustingProduct = allProducts.find(p => p.id === btn.dataset.id);
+          openAdjustModal();
+        });
+      });
+    }
+
+    // ── Filters ──
+    ['inv-search','inv-filter-cat','inv-filter-stock'].forEach(id => {
+      document.getElementById(id).addEventListener('input', debounce(applyFilters, 200));
+      document.getElementById(id).addEventListener('change', applyFilters);
+    });
+
+    // ── Adjust Modal ──
+    const adjustModal = new bootstrap.Modal(document.getElementById('adjustModal'));
+    function openAdjustModal() {
+      document.getElementById('adjust-product-name').textContent   = adjustingProduct.name;
+      document.getElementById('adjust-current-stock').textContent  = `Current stock: ${adjustingProduct.stock} units`;
+      document.getElementById('adjust-qty').value    = '';
+      document.getElementById('adjust-reason').value = '';
+      adjustType = 'add';
+      document.querySelectorAll('.adj-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === 'add'));
+      adjustModal.show();
+    }
+
+    document.querySelectorAll('.adj-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        adjustType = btn.dataset.type;
+        document.querySelectorAll('.adj-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    document.getElementById('confirm-adjust-btn').addEventListener('click', async () => {
+      const qty    = parseInt(document.getElementById('adjust-qty').value);
+      const reason = document.getElementById('adjust-reason').value.trim();
+      if (isNaN(qty) || qty < 0) { Toast.error('Enter a valid quantity'); return; }
+      if (!reason)                { Toast.error('Reason is required'); return; }
+
+      let newStock;
+      let change;
+      const current = adjustingProduct.stock;
+      if (adjustType === 'add')    { newStock = current + qty; change = qty; }
+      else if (adjustType === 'remove') {
+        if (qty > current) { Toast.error(`Cannot remove more than ${current} units`); return; }
+        newStock = current - qty; change = -qty;
+      } else {
+        newStock = qty; change = qty - current;
+      }
+
+      const btn = document.getElementById('confirm-adjust-btn');
+      btn.disabled = true;
+      try {
+        await updateDoc(doc(db, 'products', adjustingProduct.id), {
+          stock: newStock, updatedAt: serverTimestamp()
+        });
+        await addDoc(collection(db, 'stockLogs'), {
+          productId:   adjustingProduct.id,
+          productName: adjustingProduct.name,
+          change,
+          reason,
+          by:          userDoc.name,
+          at:          serverTimestamp()
+        });
+        Toast.success(`Stock updated: ${current} → ${newStock}`);
+        adjustModal.hide();
+      } catch (err) {
+        Toast.error('Adjustment failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ── Export ──
+    document.getElementById('export-stock-btn').addEventListener('click', () => {
+      const data = allProducts.map(p => ({
+        'Product':     p.name,
+        'Category':    p.category || '',
+        'Stock':       p.stock,
+        'Low Alert':   p.lowStockThreshold || 10,
+        'Supplier':    p.supplier || '',
+        'Price':       p.price,
+        'Cost':        p.costPrice || 0,
+        'Status':      p.stock === 0 ? 'Out of Stock' : p.stock <= (p.lowStockThreshold||10) ? 'Low' : 'OK'
+      }));
+      ExportService.toCSV(data, 'inventory_report.csv');
+    });
+  </script>
+</body>
+</html>

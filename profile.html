@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlexPOS — My Profile</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="css/main.css" /><link rel="stylesheet" href="css/sidebar.css" />
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="main-wrapper" id="main-wrapper">
+    <div id="topbar-mount"></div>
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">My <span>Profile</span></h1>
+          <div class="page-subtitle">Account settings and activity</div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-12 col-xl-4">
+          <!-- Profile Card -->
+          <div class="glass-card p-4 text-center mb-4">
+            <div id="profile-avatar" style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:2rem;font-weight:800;color:#fff;margin:0 auto 16px">U</div>
+            <h4 id="profile-name" style="margin-bottom:4px">—</h4>
+            <div id="profile-email" style="font-size:.83rem;color:var(--text-muted);margin-bottom:10px">—</div>
+            <span id="profile-role-badge" class="role-badge role-cashier">—</span>
+            <hr style="border-color:var(--border-color);margin:20px 0" />
+            <div class="row g-3 text-center">
+              <div class="col-6">
+                <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:800;color:var(--accent)" id="prof-orders">—</div>
+                <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">My Orders</div>
+              </div>
+              <div class="col-6">
+                <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:800;color:var(--success)" id="prof-revenue">—</div>
+                <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Revenue</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Links -->
+          <div class="glass-card p-3">
+            <div class="section-title mb-3">Quick Actions</div>
+            <div class="d-flex flex-column gap-2">
+              <a href="pos.html" class="btn btn-glass text-start"><i class="bi bi-cart3 me-2"></i>Go to POS</a>
+              <a href="orders.html" class="btn btn-glass text-start"><i class="bi bi-receipt me-2"></i>View Orders</a>
+              <button class="btn btn-glass text-start" data-theme-toggle><i class="bi bi-sun-fill me-2"></i><span data-theme-label>Light Mode</span></button>
+              <button class="btn btn-danger-glass text-start" id="logout-profile-btn"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-xl-8">
+          <!-- Edit Profile -->
+          <div class="glass-card p-4 mb-4">
+            <div class="section-title mb-4"><i class="bi bi-person-gear me-2"></i>Edit Profile</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="edit-name" placeholder="Your name" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="edit-email" disabled style="opacity:.6" />
+                <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px"><i class="bi bi-info-circle me-1"></i>Email cannot be changed</div>
+              </div>
+              <div class="col-12">
+                <button class="btn btn-primary" id="save-profile-btn"><i class="bi bi-check-lg me-2"></i>Save Changes</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Change Password -->
+          <div class="glass-card p-4 mb-4">
+            <div class="section-title mb-4"><i class="bi bi-lock me-2"></i>Change Password</div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" id="new-password" placeholder="Min 6 characters" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="confirm-password" placeholder="Repeat new password" />
+              </div>
+              <div class="col-12">
+                <button class="btn btn-glass" id="change-pw-btn"><i class="bi bi-key me-2"></i>Update Password</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Recent Activity -->
+          <div class="glass-card">
+            <div class="p-4 pb-0">
+              <div class="section-title mb-3">My Recent Transactions</div>
+            </div>
+            <div class="fp-table-wrapper m-3 mt-0">
+              <table class="fp-table">
+                <thead><tr><th>ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Method</th><th>Time</th></tr></thead>
+                <tbody id="my-txn-tbody">
+                  <tr><td colspan="6" class="text-center py-4"><div class="fp-spinner mx-auto"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    import { guard }              from './js/router.js';
+    import { buildSidebar, buildTopbar, filterNavByRole } from './js/layout.js';
+    import { initSidebar, startClock } from './js/sidebar.js';
+    import { initTheme }          from './js/theme.js';
+    import { populateSidebarUser, auth, db as _db, logout } from './js/auth.js';
+    import { Toast, formatCurrency, formatDateTime } from './js/utils.js';
+    import { db }                 from './js/firebase-config.js';
+    import {
+      collection, query, where, getDocs, orderBy, limit,
+      doc, updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      updatePassword, reauthenticateWithCredential, EmailAuthProvider
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    initTheme();
+    document.getElementById('sidebar-mount').innerHTML = buildSidebar('profile');
+    document.getElementById('topbar-mount').innerHTML  = buildTopbar('My Profile');
+    initSidebar(); startClock();
+    const userDoc = await guard(); if (!userDoc) throw new Error('Unauthorized');
+    populateSidebarUser(userDoc); filterNavByRole(userDoc.role);
+
+    // ── Populate profile ──
+    const initials = (userDoc.name || userDoc.email || 'U').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    document.getElementById('profile-avatar').textContent = initials;
+    document.getElementById('profile-name').textContent   = userDoc.name || '—';
+    document.getElementById('profile-email').textContent  = userDoc.email || '—';
+    document.getElementById('edit-name').value  = userDoc.name || '';
+    document.getElementById('edit-email').value = userDoc.email || '';
+    const roleBadge = document.getElementById('profile-role-badge');
+    roleBadge.textContent  = userDoc.role;
+    roleBadge.className    = `role-badge role-${userDoc.role}`;
+
+    // ── My stats ──
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'transactions'),
+        where('cashierId', '==', userDoc.uid)
+      ));
+      const txns    = snap.docs.map(d => d.data());
+      const revenue = txns.filter(t => t.status !== 'refunded').reduce((s,t) => s+(t.total||0), 0);
+      document.getElementById('prof-orders').textContent  = txns.length;
+      document.getElementById('prof-revenue').textContent = formatCurrency(revenue);
+
+      // Recent transactions table
+      const sorted = txns.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0, 10);
+      const tbody  = document.getElementById('my-txn-tbody');
+      if (!sorted.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="fp-empty" style="padding:24px"><div class="fp-empty-title">No transactions yet</div></div></td></tr>`;
+      } else {
+        const payIcons = { cash:'bi-cash', card:'bi-credit-card', digital:'bi-phone' };
+        tbody.innerHTML = sorted.map(t => {
+          const time = t.createdAt ? new Date(t.createdAt.seconds*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '—';
+          const date = t.createdAt ? new Date(t.createdAt.seconds*1000).toLocaleDateString([], {month:'short',day:'numeric'}) : '—';
+          return `<tr>
+            <td style="font-family:monospace;font-size:.75rem">#${(t.id||'').slice(-6).toUpperCase()}</td>
+            <td>${t.customerName||'<span class="text-muted-fp">Walk-in</span>'}</td>
+            <td>${t.items?.length||0}</td>
+            <td class="td-main">${formatCurrency(t.total)}</td>
+            <td><span class="fp-badge fp-badge-muted"><i class="bi ${payIcons[t.paymentMethod]||'bi-cash'} me-1"></i>${t.paymentMethod||'—'}</span></td>
+            <td>${date} ${time}</td>
+          </tr>`;
+        }).join('');
+      }
+    } catch (_) {}
+
+    // ── Save Profile ──
+    document.getElementById('save-profile-btn').addEventListener('click', async () => {
+      const name = document.getElementById('edit-name').value.trim();
+      if (!name) { Toast.error('Name is required'); return; }
+      try {
+        await updateDoc(doc(db, 'users', userDoc.uid), { name });
+        localStorage.removeItem('fp_user_cache');
+        Toast.success('Profile updated');
+        document.getElementById('profile-name').textContent = name;
+        document.getElementById('profile-avatar').textContent = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+      } catch (err) { Toast.error('Update failed: ' + err.message); }
+    });
+
+    // ── Change Password ──
+    document.getElementById('change-pw-btn').addEventListener('click', async () => {
+      const pw1 = document.getElementById('new-password').value;
+      const pw2 = document.getElementById('confirm-password').value;
+      if (!pw1)        { Toast.error('Enter a new password'); return; }
+      if (pw1 !== pw2) { Toast.error('Passwords do not match'); return; }
+      if (pw1.length < 6) { Toast.error('Password must be at least 6 characters'); return; }
+      try {
+        await updatePassword(auth.currentUser, pw1);
+        document.getElementById('new-password').value = '';
+        document.getElementById('confirm-password').value = '';
+        Toast.success('Password updated successfully');
+      } catch (err) {
+        if (err.code === 'auth/requires-recent-login') {
+          Toast.error('Please sign out and sign back in before changing your password');
+        } else {
+          Toast.error('Password change failed: ' + err.message);
+        }
+      }
+    });
+
+    // ── Logout ──
+    document.getElementById('logout-profile-btn').addEventListener('click', logout);
+  </script>
+</body>
+</html>

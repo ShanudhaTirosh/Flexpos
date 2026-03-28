@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlexPOS — Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+
+  <div class="main-wrapper" id="main-wrapper">
+    <div id="topbar-mount"></div>
+
+    <main class="page-content">
+      <!-- Stat Cards -->
+      <div class="row g-3 mb-4" id="stat-row">
+        <div class="col-6 col-xl-3">
+          <div class="glass-card stat-card hoverable animate__animated" style="animation:fadeInUp .4s ease both;animation-delay:.05s">
+            <div class="stat-icon success"><i class="bi bi-currency-dollar"></i></div>
+            <div class="stat-value" id="stat-sales">—</div>
+            <div class="stat-label">Today's Sales</div>
+            <div class="stat-delta up" id="stat-sales-delta"><i class="bi bi-arrow-up-short"></i> —</div>
+          </div>
+        </div>
+        <div class="col-6 col-xl-3">
+          <div class="glass-card stat-card hoverable" style="animation:fadeInUp .4s ease both;animation-delay:.10s">
+            <div class="stat-icon"><i class="bi bi-receipt"></i></div>
+            <div class="stat-value" id="stat-orders">—</div>
+            <div class="stat-label">Orders Today</div>
+            <div class="stat-delta up" id="stat-orders-delta"><i class="bi bi-arrow-up-short"></i> —</div>
+          </div>
+        </div>
+        <div class="col-6 col-xl-3">
+          <div class="glass-card stat-card hoverable" style="animation:fadeInUp .4s ease both;animation-delay:.15s">
+            <div class="stat-icon info"><i class="bi bi-people"></i></div>
+            <div class="stat-value" id="stat-customers">—</div>
+            <div class="stat-label">Active Customers</div>
+            <div class="stat-delta" id="stat-customers-sub" style="color:var(--text-muted);font-size:.72rem"></div>
+          </div>
+        </div>
+        <div class="col-6 col-xl-3">
+          <a href="inventory.html" style="text-decoration:none">
+            <div class="glass-card stat-card hoverable" style="animation:fadeInUp .4s ease both;animation-delay:.20s;cursor:pointer">
+              <div class="stat-icon warning"><i class="bi bi-exclamation-triangle"></i></div>
+              <div class="stat-value" id="stat-lowstock">—</div>
+              <div class="stat-label">Low Stock Items</div>
+              <div class="stat-delta down" style="font-size:.72rem;color:var(--warning)"><i class="bi bi-arrow-right me-1"></i>View inventory</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-7">
+          <div class="glass-card p-4 h-100">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div class="section-title mb-0">7-Day Revenue</div>
+              <div class="fp-badge fp-badge-primary" id="week-total-badge">—</div>
+            </div>
+            <div class="chart-wrapper tall">
+              <canvas id="chart-revenue"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-xl-5">
+          <div class="glass-card p-4 h-100">
+            <div class="section-title mb-3">Sales by Category</div>
+            <div class="chart-wrapper" style="height:200px">
+              <canvas id="chart-category"></canvas>
+            </div>
+            <div id="category-legend" class="mt-3 d-flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Row -->
+      <div class="row g-3">
+        <!-- Recent Transactions -->
+        <div class="col-12 col-xl-7">
+          <div class="glass-card">
+            <div class="d-flex align-items-center justify-content-between p-4 pb-2">
+              <div class="section-title mb-0">Recent Transactions</div>
+              <a href="orders.html" class="btn btn-glass btn-sm">
+                <i class="bi bi-arrow-right me-1"></i>All Orders
+              </a>
+            </div>
+            <div class="fp-table-wrapper m-3 mt-2">
+              <table class="fp-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Method</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-txn-tbody">
+                  <tr><td colspan="6" class="text-center py-4"><div class="fp-spinner mx-auto"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="col-12 col-xl-5">
+          <!-- Low Stock Alerts -->
+          <div class="glass-card mb-3">
+            <div class="d-flex align-items-center justify-content-between p-4 pb-2">
+              <div class="section-title mb-0" style="color:var(--warning)">
+                <i class="bi bi-exclamation-triangle me-1"></i>Low Stock Alerts
+              </div>
+            </div>
+            <div id="low-stock-list" style="padding:0 16px 16px">
+              <div class="text-center py-3"><div class="fp-spinner mx-auto"></div></div>
+            </div>
+          </div>
+
+          <!-- Top Products -->
+          <div class="glass-card">
+            <div class="p-4 pb-2">
+              <div class="section-title mb-3">Top Sellers Today</div>
+              <div id="top-products-list">
+                <div class="text-center py-3"><div class="fp-spinner mx-auto"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast + Mobile Nav -->
+  <div id="toast-container"></div>
+  <nav class="mobile-nav">
+    <a class="mobile-nav-item active" href="dashboard.html"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a>
+    <a class="mobile-nav-item" href="pos.html"><i class="bi bi-cart3"></i>POS</a>
+    <a class="mobile-nav-item" href="orders.html"><i class="bi bi-receipt"></i>Orders</a>
+    <a class="mobile-nav-item" href="customers.html"><i class="bi bi-people"></i>Customers</a>
+    <a class="mobile-nav-item" href="profile.html"><i class="bi bi-person-circle"></i>Profile</a>
+  </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script type="module">
+    import { guard }             from './js/router.js';
+    import { buildSidebar, buildTopbar, filterNavByRole } from './js/layout.js';
+    import { initSidebar, startClock, setTopbarDate } from './js/sidebar.js';
+    import { initTheme }         from './js/theme.js';
+    import { populateSidebarUser } from './js/auth.js';
+    import { formatCurrency, formatDateTime, Toast } from './js/utils.js';
+    import { db }                from './js/firebase-config.js';
+    import {
+      collection, query, where, orderBy, limit,
+      getDocs, onSnapshot, Timestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initTheme();
+    document.getElementById('sidebar-mount').innerHTML = buildSidebar('dashboard');
+    document.getElementById('topbar-mount').innerHTML  = buildTopbar('Dashboard', new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'}));
+    initSidebar();
+    startClock();
+    setTopbarDate();
+
+    const userDoc = await guard();
+    if (!userDoc) throw new Error('No user');
+    populateSidebarUser(userDoc);
+    filterNavByRole(userDoc.role);
+
+    // ── Date boundaries ──
+    const now      = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd   = new Date(todayStart.getTime() + 86400000);
+
+    // ── Today's transactions (onSnapshot) ──
+    const txnQ = query(
+      collection(db, 'transactions'),
+      where('createdAt', '>=', Timestamp.fromDate(todayStart)),
+      where('createdAt', '<',  Timestamp.fromDate(todayEnd))
+    );
+
+    onSnapshot(txnQ, snap => {
+      const txns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const totalSales = txns.reduce((s, t) => s + (t.total || 0), 0);
+      document.getElementById('stat-sales').textContent  = formatCurrency(totalSales);
+      document.getElementById('stat-orders').textContent = txns.length;
+
+      // Recent transactions table
+      const sorted = [...txns].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 10);
+      const tbody  = document.getElementById('recent-txn-tbody');
+      if (!sorted.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="fp-empty"><i class="bi bi-receipt fp-empty-icon"></i><div class="fp-empty-title">No transactions today</div></div></td></tr>`;
+      } else {
+        tbody.innerHTML = sorted.map(t => {
+          const methodIcon = { cash: 'bi-cash', card: 'bi-credit-card', digital: 'bi-phone' };
+          const time = t.createdAt ? new Date(t.createdAt.seconds * 1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '—';
+          return `<tr>
+            <td class="td-main" style="font-size:.75rem;font-family:monospace">#${t.id.slice(-6).toUpperCase()}</td>
+            <td>${t.customerName || '<span class="text-muted-fp">Walk-in</span>'}</td>
+            <td>${t.items?.length || 0}</td>
+            <td class="td-main">${formatCurrency(t.total)}</td>
+            <td><span class="fp-badge fp-badge-muted"><i class="bi ${methodIcon[t.paymentMethod] || 'bi-cash'} me-1"></i>${t.paymentMethod}</span></td>
+            <td>${time}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      // Top products
+      const productCount = {};
+      txns.forEach(t => (t.items || []).forEach(item => {
+        productCount[item.name] = (productCount[item.name] || 0) + (item.qty || 1);
+      }));
+      const topProds = Object.entries(productCount).sort((a,b) => b[1]-a[1]).slice(0, 5);
+      const topEl    = document.getElementById('top-products-list');
+      if (!topProds.length) {
+        topEl.innerHTML = `<div class="fp-empty" style="padding:24px"><div class="fp-empty-icon"><i class="bi bi-graph-up"></i></div><div class="fp-empty-title">No sales yet today</div></div>`;
+      } else {
+        const max = topProds[0][1];
+        topEl.innerHTML = topProds.map(([name, count]) => `
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.82rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+              <div style="height:5px;background:var(--glass-bg);border-radius:3px;margin-top:4px">
+                <div style="height:100%;width:${(count/max*100).toFixed(0)}%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:3px;transition:width .5s ease"></div>
+              </div>
+            </div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--accent);flex-shrink:0">${count} sold</div>
+          </div>`).join('');
+      }
+    });
+
+    // ── Customers count ──
+    getDocs(collection(db, 'customers')).then(snap => {
+      document.getElementById('stat-customers').textContent = snap.size;
+    }).catch(() => {});
+
+    // ── Low stock ──
+    getDocs(collection(db, 'products')).then(snap => {
+      const products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const low = products.filter(p => p.stock <= (p.lowStockThreshold ?? 10));
+      document.getElementById('stat-lowstock').textContent = low.length;
+
+      const listEl = document.getElementById('low-stock-list');
+      if (!low.length) {
+        listEl.innerHTML = `<div class="fp-empty" style="padding:20px"><div class="fp-empty-icon"><i class="bi bi-check-circle"></i></div><div class="fp-empty-title" style="color:var(--success)">All stock levels OK</div></div>`;
+      } else {
+        listEl.innerHTML = low.slice(0, 6).map(p => `
+          <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <div style="font-size:.83rem;font-weight:500;color:var(--text-primary)">${p.name}</div>
+            <span class="fp-badge ${p.stock === 0 ? 'fp-badge-danger' : 'fp-badge-warning'}">
+              <i class="bi bi-box-seam me-1"></i>${p.stock} left
+            </span>
+          </div>`).join('');
+        if (low.length > 6) listEl.innerHTML += `<a href="inventory.html" style="font-size:.75rem;color:var(--accent)">+${low.length-6} more items →</a>`;
+      }
+
+      // Category chart
+      const catMap = {};
+      snap.docs.forEach(d => {
+        const p = d.data();
+        catMap[p.category || 'Uncategorized'] = (catMap[p.category || 'Uncategorized'] || 0) + 1;
+      });
+      const cats   = Object.keys(catMap).slice(0, 5);
+      const counts = cats.map(c => catMap[c]);
+      const colors = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#06b6d4'];
+      new Chart(document.getElementById('chart-category'), {
+        type: 'doughnut',
+        data: {
+          labels: cats,
+          datasets: [{ data: counts, backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '68%',
+          plugins: { legend: { display: false } }
+        }
+      });
+      const legendEl = document.getElementById('category-legend');
+      legendEl.innerHTML = cats.map((c, i) => `
+        <div class="d-flex align-items-center gap-1" style="font-size:.72rem">
+          <span style="width:8px;height:8px;border-radius:50%;background:${colors[i]};flex-shrink:0"></span>
+          <span style="color:var(--text-muted)">${c} (${catMap[c]})</span>
+        </div>`).join('');
+    }).catch(() => {});
+
+    // ── 7-day revenue chart ──
+    const labels = [], revenue = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      labels.push(d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }));
+    }
+
+    const weekStart = new Date(now); weekStart.setDate(weekStart.getDate() - 6);
+    weekStart.setHours(0,0,0,0);
+
+    getDocs(query(
+      collection(db, 'transactions'),
+      where('createdAt', '>=', Timestamp.fromDate(weekStart))
+    )).then(snap => {
+      const daily = {};
+      labels.forEach(l => daily[l] = 0);
+      snap.docs.forEach(d => {
+        const t   = d.data();
+        const key = t.createdAt
+          ? new Date(t.createdAt.seconds * 1000).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+          : null;
+        if (key && key in daily) daily[key] += (t.total || 0);
+      });
+      const data = labels.map(l => daily[l]);
+      const weekTotal = data.reduce((s,v) => s+v, 0);
+      document.getElementById('week-total-badge').textContent = formatCurrency(weekTotal) + ' this week';
+
+      const ctx = document.getElementById('chart-revenue').getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, 280);
+      grad.addColorStop(0, 'rgba(99,102,241,0.35)');
+      grad.addColorStop(1, 'rgba(99,102,241,0)');
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Revenue',
+            data,
+            borderColor: '#6366f1',
+            backgroundColor: grad,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.45,
+            pointRadius: 4,
+            pointBackgroundColor: '#6366f1',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: { color: 'rgba(241,240,249,0.45)', font: { size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: { color: 'rgba(241,240,249,0.45)', font: { size: 10 },
+                callback: v => '$' + v.toFixed(0)
+              }
+            }
+          }
+        }
+      });
+    }).catch(() => {});
+  </script>
+</body>
+</html>

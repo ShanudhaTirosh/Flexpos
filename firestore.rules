@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    // ── Helper Functions ──
+    function isAuth()    { return request.auth != null; }
+    function uid()       { return request.auth.uid; }
+    function userDoc()   { return get(/databases/$(db)/documents/users/$(uid())).data; }
+    function role()      { return userDoc().role; }
+    function isActive()  { return userDoc().active == true; }
+    function isAdmin()   { return isAuth() && isActive() && role() == 'admin'; }
+    function isManager() { return isAuth() && isActive() && (role() == 'manager' || isAdmin()); }
+    function isCashier() { return isAuth() && isActive(); }
+
+    // ── Users ──
+    match /users/{userId} {
+      // Users can read their own doc; admins can read all
+      allow read: if isAuth() && (uid() == userId || isAdmin());
+      // Admins can update any user; self-create on registration
+      allow create: if uid() == userId;
+      allow update: if isAdmin() || uid() == userId;
+      allow delete: if isAdmin();
+    }
+
+    // ── Products ──
+    match /products/{productId} {
+      allow read:   if isCashier();
+      allow create, update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    // ── Categories ──
+    match /categories/{catId} {
+      allow read:   if isCashier();
+      allow write:  if isManager();
+    }
+
+    // ── Customers ──
+    match /customers/{customerId} {
+      allow read, write: if isCashier();
+    }
+
+    // ── Transactions ──
+    match /transactions/{txnId} {
+      allow read:   if isCashier();
+      allow create: if isCashier();
+      allow update: if isManager();  // refunds
+      allow delete: if isAdmin();
+    }
+
+    // ── Stock Logs ──
+    match /stockLogs/{logId} {
+      allow read:   if isManager();
+      allow create: if isCashier();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Suppliers ──
+    match /suppliers/{supplierId} {
+      allow read, write: if isManager();
+    }
+
+    // ── Expenses ──
+    match /expenses/{expenseId} {
+      allow read, write: if isManager();
+    }
+
+    // ── Settings ──
+    match /settings/{settingDoc} {
+      allow read:  if isCashier();
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlexPOS — Reports</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="css/main.css" /><link rel="stylesheet" href="css/sidebar.css" />
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="main-wrapper" id="main-wrapper">
+    <div id="topbar-mount"></div>
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Reports <span>&amp; Analytics</span></h1>
+          <div class="page-subtitle">Business performance insights and exports</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-glass" id="export-pdf-btn"><i class="bi bi-file-earmark-pdf me-2"></i>Export PDF</button>
+          <button class="btn btn-glass" id="export-csv-btn"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Date Range -->
+      <div class="glass-card p-3 mb-4">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-auto">
+            <label class="form-label">Report Type</label>
+            <select class="form-select" id="report-type">
+              <option value="sales">Daily Sales</option>
+              <option value="revenue">Monthly Revenue</option>
+              <option value="profit">Profit / Loss</option>
+              <option value="top-products">Top Products</option>
+              <option value="cashier">Cashier Performance</option>
+              <option value="customers">Customer Spending</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">From</label>
+            <input type="date" class="form-control" id="rep-from" />
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">To</label>
+            <input type="date" class="form-control" id="rep-to" />
+          </div>
+          <div class="col-12 col-md-auto">
+            <button class="btn btn-primary" id="run-report-btn"><i class="bi bi-play-fill me-2"></i>Run Report</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="row g-3 mb-4" id="kpi-row">
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon success"><i class="bi bi-currency-dollar"></i></div><div class="stat-value" id="kpi-revenue">—</div><div class="stat-label">Total Revenue</div></div></div>
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon"><i class="bi bi-receipt"></i></div><div class="stat-value" id="kpi-orders">—</div><div class="stat-label">Orders</div></div></div>
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon warning"><i class="bi bi-graph-up-arrow"></i></div><div class="stat-value" id="kpi-profit">—</div><div class="stat-label">Gross Profit</div></div></div>
+        <div class="col-6 col-md-3"><div class="glass-card stat-card"><div class="stat-icon info"><i class="bi bi-basket"></i></div><div class="stat-value" id="kpi-avg">—</div><div class="stat-label">Avg Order</div></div></div>
+      </div>
+
+      <!-- Chart -->
+      <div class="glass-card p-4 mb-4">
+        <div class="section-title mb-3" id="chart-title">Revenue Overview</div>
+        <div class="chart-wrapper" style="height:300px"><canvas id="main-chart"></canvas></div>
+      </div>
+
+      <!-- Data Table -->
+      <div class="glass-card">
+        <div class="p-4 pb-0">
+          <div class="section-title" id="table-title">Report Data</div>
+        </div>
+        <div class="fp-table-wrapper m-3 mt-0">
+          <table class="fp-table">
+            <thead id="report-thead"><tr><td colspan="5" class="text-center py-3">Run a report to see data</td></tr></thead>
+            <tbody id="report-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script type="module">
+    import { guard }              from './js/router.js';
+    import { buildSidebar, buildTopbar, filterNavByRole } from './js/layout.js';
+    import { initSidebar, startClock } from './js/sidebar.js';
+    import { initTheme }          from './js/theme.js';
+    import { populateSidebarUser } from './js/auth.js';
+    import { Toast, formatCurrency, formatDate, toDateInputValue } from './js/utils.js';
+    import { ExportService }      from './js/exportService.js';
+    import { db }                 from './js/firebase-config.js';
+    import {
+      collection, query, where, getDocs, Timestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initTheme();
+    document.getElementById('sidebar-mount').innerHTML = buildSidebar('reports');
+    document.getElementById('topbar-mount').innerHTML  = buildTopbar('Reports', 'Analytics & insights');
+    initSidebar(); startClock();
+    const userDoc = await guard(); if (!userDoc) throw new Error('Unauthorized');
+    populateSidebarUser(userDoc); filterNavByRole(userDoc.role);
+
+    // Default date range: this month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    document.getElementById('rep-from').value = toDateInputValue({ seconds: monthStart.getTime() / 1000 });
+    document.getElementById('rep-to').value   = toDateInputValue({ seconds: now.getTime() / 1000 });
+
+    let mainChart = null;
+    let currentReportData = [];
+    let currentColumns = [];
+
+    document.getElementById('run-report-btn').addEventListener('click', runReport);
+
+    async function runReport() {
+      const type     = document.getElementById('report-type').value;
+      const fromDate = new Date(document.getElementById('rep-from').value + 'T00:00:00');
+      const toDate   = new Date(document.getElementById('rep-to').value   + 'T23:59:59');
+      const btn      = document.getElementById('run-report-btn');
+      btn.disabled   = true;
+      btn.innerHTML  = '<div class="fp-spinner mx-auto" style="width:16px;height:16px;border-width:2px"></div>';
+
+      try {
+        // Fetch transactions
+        const snap = await getDocs(query(
+          collection(db, 'transactions'),
+          where('createdAt', '>=', Timestamp.fromDate(fromDate)),
+          where('createdAt', '<=', Timestamp.fromDate(toDate))
+        ));
+        const txns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Fetch products (for cost)
+        const prodSnap = await getDocs(collection(db, 'products'));
+        const productMap = {};
+        prodSnap.docs.forEach(d => productMap[d.id] = d.data());
+
+        // Fetch expenses
+        const expSnap = await getDocs(query(
+          collection(db, 'expenses'),
+          where('date', '>=', Timestamp.fromDate(fromDate)),
+          where('date', '<=', Timestamp.fromDate(toDate))
+        ));
+        const expenses = expSnap.docs.map(d => d.data());
+
+        switch (type) {
+          case 'sales':        renderSalesReport(txns, fromDate, toDate); break;
+          case 'revenue':      renderRevenueReport(txns); break;
+          case 'profit':       renderProfitReport(txns, productMap, expenses); break;
+          case 'top-products': renderTopProducts(txns); break;
+          case 'cashier':      renderCashierReport(txns); break;
+          case 'customers':    renderCustomerReport(txns); break;
+        }
+      } catch (err) {
+        Toast.error('Report failed: ' + err.message);
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill me-2"></i>Run Report';
+      }
+    }
+
+    function setKPIs(revenue, orders, profit, avg) {
+      document.getElementById('kpi-revenue').textContent = formatCurrency(revenue);
+      document.getElementById('kpi-orders').textContent  = orders;
+      document.getElementById('kpi-profit').textContent  = formatCurrency(profit);
+      document.getElementById('kpi-avg').textContent     = orders ? formatCurrency(avg) : '—';
+    }
+
+    function renderLineChart(labels, values, label = 'Revenue') {
+      const ctx  = document.getElementById('main-chart').getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, 300);
+      grad.addColorStop(0, 'rgba(99,102,241,0.35)');
+      grad.addColorStop(1, 'rgba(99,102,241,0)');
+      if (mainChart) mainChart.destroy();
+      mainChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label, data: values, borderColor: '#6366f1', backgroundColor: grad, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#6366f1', pointBorderColor: '#fff', pointBorderWidth: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(241,240,249,0.45)', font: { size: 10 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(241,240,249,0.45)', font: { size: 10 }, callback: v => '$'+v.toFixed(0) } }
+          }
+        }
+      });
+    }
+
+    function renderBarChart(labels, values, label = 'Amount', color = '#10b981') {
+      if (mainChart) mainChart.destroy();
+      mainChart = new Chart(document.getElementById('main-chart'), {
+        type: 'bar',
+        data: { labels, datasets: [{ label, data: values, backgroundColor: color + '88', borderColor: color, borderWidth: 1, borderRadius: 6 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(241,240,249,0.45)', font: { size: 10 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(241,240,249,0.45)', font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function renderTableData(headers, rows) {
+      currentColumns = headers;
+      currentReportData = rows.map(r => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = Array.isArray(r) ? r[i] : r[h]);
+        return obj;
+      });
+      document.getElementById('report-thead').innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      document.getElementById('report-tbody').innerHTML = rows.slice(0, 100).map(r => {
+        const vals = Array.isArray(r) ? r : headers.map(h => r[h]);
+        return `<tr>${vals.map(v => `<td>${v ?? '—'}</td>`).join('')}</tr>`;
+      }).join('') || `<tr><td colspan="${headers.length}" class="text-center py-4" style="color:var(--text-muted)">No data in range</td></tr>`;
+    }
+
+    // ── Report Types ──
+    function renderSalesReport(txns, from, to) {
+      document.getElementById('chart-title').textContent = 'Daily Sales';
+      document.getElementById('table-title').textContent = 'Sales by Day';
+      const dayMap = {};
+      const cursor = new Date(from);
+      while (cursor <= to) {
+        dayMap[cursor.toLocaleDateString([], {month:'short',day:'numeric'})] = 0;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      txns.forEach(t => {
+        if (t.status === 'refunded') return;
+        const key = t.createdAt ? new Date(t.createdAt.seconds*1000).toLocaleDateString([], {month:'short',day:'numeric'}) : null;
+        if (key && key in dayMap) dayMap[key] += t.total || 0;
+      });
+      const labels = Object.keys(dayMap);
+      const vals   = Object.values(dayMap);
+      const total  = vals.reduce((s,v) => s+v, 0);
+      setKPIs(total, txns.length, 0, total/Math.max(txns.length, 1));
+      renderLineChart(labels, vals, 'Daily Revenue');
+      renderTableData(['Date', 'Revenue', 'Orders'], labels.map(l => [l, formatCurrency(dayMap[l]), '—']));
+    }
+
+    function renderRevenueReport(txns) {
+      document.getElementById('chart-title').textContent = 'Monthly Revenue';
+      document.getElementById('table-title').textContent = 'Revenue by Month';
+      const monthMap = {};
+      txns.forEach(t => {
+        if (t.status === 'refunded') return;
+        const d   = t.createdAt ? new Date(t.createdAt.seconds*1000) : new Date();
+        const key = d.toLocaleDateString([], {month:'short', year:'numeric'});
+        if (!monthMap[key]) monthMap[key] = { revenue: 0, orders: 0 };
+        monthMap[key].revenue += t.total || 0;
+        monthMap[key].orders++;
+      });
+      const labels  = Object.keys(monthMap);
+      const vals    = labels.map(l => monthMap[l].revenue);
+      const revenue = vals.reduce((s,v) => s+v, 0);
+      setKPIs(revenue, txns.length, 0, revenue/Math.max(txns.length,1));
+      renderLineChart(labels, vals, 'Monthly Revenue');
+      renderTableData(['Month', 'Revenue', 'Orders', 'Avg Order'],
+        labels.map(l => [l, formatCurrency(monthMap[l].revenue), monthMap[l].orders,
+          formatCurrency(monthMap[l].revenue / Math.max(monthMap[l].orders, 1))]));
+    }
+
+    function renderProfitReport(txns, productMap, expenses) {
+      document.getElementById('chart-title').textContent = 'Profit / Loss';
+      document.getElementById('table-title').textContent = 'Profit Analysis';
+      let totalRevenue = 0, totalCOGS = 0;
+      txns.forEach(t => {
+        if (t.status === 'refunded') return;
+        totalRevenue += t.total || 0;
+        (t.items || []).forEach(item => {
+          const cost = productMap[item.productId]?.costPrice || 0;
+          totalCOGS += cost * item.qty;
+        });
+      });
+      const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+      const grossProfit   = totalRevenue - totalCOGS;
+      const netProfit     = grossProfit - totalExpenses;
+      setKPIs(totalRevenue, txns.length, grossProfit, totalRevenue/Math.max(txns.length,1));
+      renderBarChart(['Revenue','COGS','Gross Profit','Expenses','Net Profit'],
+        [totalRevenue, totalCOGS, grossProfit, totalExpenses, netProfit], 'Amount', '#10b981');
+      renderTableData(['Metric', 'Amount'],
+        [['Total Revenue', formatCurrency(totalRevenue)],['Cost of Goods Sold', formatCurrency(totalCOGS)],
+         ['Gross Profit', formatCurrency(grossProfit)],['Total Expenses', formatCurrency(totalExpenses)],
+         ['Net Profit', formatCurrency(netProfit)]]);
+    }
+
+    function renderTopProducts(txns) {
+      document.getElementById('chart-title').textContent = 'Top Products by Quantity';
+      document.getElementById('table-title').textContent = 'Product Performance';
+      const map = {};
+      txns.forEach(t => (t.items||[]).forEach(item => {
+        if (!map[item.name]) map[item.name] = { qty: 0, revenue: 0 };
+        map[item.name].qty     += item.qty;
+        map[item.name].revenue += item.price * item.qty;
+      }));
+      const sorted = Object.entries(map).sort((a,b) => b[1].qty - a[1].qty).slice(0, 15);
+      renderBarChart(sorted.map(([n]) => n.length > 16 ? n.slice(0,16)+'…' : n), sorted.map(([,v]) => v.qty), 'Units Sold', '#6366f1');
+      setKPIs(sorted.reduce((s,[,v]) => s+v.revenue, 0), sorted.reduce((s,[,v]) => s+v.qty, 0), 0, 0);
+      renderTableData(['Product', 'Units Sold', 'Revenue'], sorted.map(([n,v]) => [n, v.qty, formatCurrency(v.revenue)]));
+    }
+
+    function renderCashierReport(txns) {
+      document.getElementById('chart-title').textContent = 'Cashier Performance';
+      document.getElementById('table-title').textContent = 'Sales by Cashier';
+      const map = {};
+      txns.forEach(t => {
+        const name = t.cashierName || 'Unknown';
+        if (!map[name]) map[name] = { orders: 0, revenue: 0 };
+        map[name].orders++;
+        map[name].revenue += t.total || 0;
+      });
+      const sorted = Object.entries(map).sort((a,b) => b[1].revenue - a[1].revenue);
+      renderBarChart(sorted.map(([n]) => n), sorted.map(([,v]) => v.revenue), 'Revenue', '#8b5cf6');
+      setKPIs(sorted.reduce((s,[,v]) => s+v.revenue, 0), sorted.reduce((s,[,v]) => s+v.orders, 0), 0, 0);
+      renderTableData(['Cashier', 'Orders', 'Revenue', 'Avg Order'],
+        sorted.map(([n,v]) => [n, v.orders, formatCurrency(v.revenue), formatCurrency(v.revenue/Math.max(v.orders,1))]));
+    }
+
+    function renderCustomerReport(txns) {
+      document.getElementById('chart-title').textContent = 'Customer Spending';
+      document.getElementById('table-title').textContent = 'Top Customers';
+      const map = {};
+      txns.forEach(t => {
+        const name = t.customerName || 'Walk-in';
+        if (!map[name]) map[name] = { orders: 0, spent: 0 };
+        map[name].orders++;
+        map[name].spent += t.total || 0;
+      });
+      const sorted = Object.entries(map).sort((a,b) => b[1].spent - a[1].spent).slice(0, 15);
+      renderBarChart(sorted.map(([n]) => n.length > 14 ? n.slice(0,14)+'…' : n), sorted.map(([,v]) => v.spent), 'Total Spent', '#10b981');
+      setKPIs(sorted.reduce((s,[,v]) => s+v.spent, 0), sorted.reduce((s,[,v]) => s+v.orders, 0), 0, 0);
+      renderTableData(['Customer', 'Orders', 'Total Spent', 'Avg Order'],
+        sorted.map(([n,v]) => [n, v.orders, formatCurrency(v.spent), formatCurrency(v.spent/Math.max(v.orders,1))]));
+    }
+
+    // ── Export ──
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+      if (!currentReportData.length) { Toast.warning('Run a report first'); return; }
+      ExportService.toCSV(currentReportData, 'report.csv');
+    });
+
+    document.getElementById('export-pdf-btn').addEventListener('click', () => {
+      if (!currentReportData.length) { Toast.warning('Run a report first'); return; }
+      ExportService.toPDF({
+        title:    document.getElementById('table-title').textContent,
+        subtitle: `${document.getElementById('rep-from').value} to ${document.getElementById('rep-to').value}`,
+        columns:  currentColumns,
+        rows:     currentReportData,
+        filename: 'report.pdf',
+        chartCanvas: document.getElementById('main-chart')
+      });
+    });
+  </script>
+</body>
+</html>
